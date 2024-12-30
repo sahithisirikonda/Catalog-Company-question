@@ -1,21 +1,100 @@
-const fs = require('fs');
+// Function to decode a value from a given base
+function decodeValue(base, value) {
+    return BigInt(parseInt(value, base));
+}
 
-function decodeValue(base, value) { let decoded = 0; for (let i = 0; i < value.length; i++) { decoded = decoded * base + parseInt(value[i], base); } return decoded; }
+// Function to perform Lagrange interpolation and find P(0)
+function lagrangeInterpolation(points) {
+    const k = points.length;
+    
+    // Calculate P(0)
+    let total = BigInt(0);
+    
+    for (let j = 0; j < k; j++) {
+        const [x_j, y_j] = points[j];
+        let product = y_j;
 
-function lagrangeBasis(i, x, xValues) { let result = 1; for (let j = 0; j < xValues.length; j++) { if (j !== i) { result *= (x - xValues[j]) / (xValues[i] - xValues[j]); } } return result; }
+        for (let m = 0; m < k; m++) {
+            if (m !== j) {
+                const [x_m] = points[m];
+                product *= BigInt(-x_m) / BigInt(x_j - x_m);
+            }
+        }
+        
+        total += product;
+    }
 
-function calculateConstantTerm(roots) { const xValues = roots.map(root => root.x); const yValues = roots.map(root => root.y);
+    return total; // This is the constant term c
+}
 
-let constantTerm = 0; for (let i = 0; i < roots.length; i++) { constantTerm += yValues[i] * lagrangeBasis(i, 0, xValues); }
+// Main function to process the input JSON and calculate the secret
+function calculateSecret(inputJson) {
+    const data = JSON.parse(inputJson);
+    const n = data.keys.n;
+    const k = data.keys.k;
 
-return Math.round(constantTerm); }
+    const points = [];
 
-function processTestCase(filename) { const data = JSON.parse(fs.readFileSync(filename, 'utf-8')); const { k } = data.keys;
+    // Decode each point
+    for (let i = 1; i <= n; i++) {
+        const base = parseInt(data[i].base);
+        const value = data[i].value;
+        const decodedY = decodeValue(base, value);
+        points.push([i, decodedY]); // Using i as x-coordinate
+    }
 
-const roots = Object.entries(data) .filter(([key]) => key !== 'keys') .map(([key, value]) => ({ x: parseInt(key), y: decodeValue(value.base, value.value), }));
+    // Calculate the secret (constant term c)
+    const secretC = lagrangeInterpolation(points);
+    console.log(`The secret (constant term c) is: ${secretC.toString()}`);
+}
 
-return calculateConstantTerm(roots); }
+// Sample input JSON for the second test case
+const inputJson = `{
+  "keys": {
+    "n": 10,
+    "k": 7
+  },
+  "1": {
+    "base": "6",
+    "value": "13444211440455345511"
+  },
+  "2": {
+    "base": "15",
+    "value": "aed7015a346d63"
+  },
+  "3": {
+    "base": "15",
+    "value": "6aeeb69631c227c"
+  },
+  "4": {
+    "base": "16",
+    "value": "e1b5e05623d881f"
+  },
+  "5": {
+    "base": "8",
+    "value": "316034514573652620673"
+  },
+  "6": {
+    "base": "3",
+    "value": "2122212201122002221120200210011020220200"
+  },
+  "7": {
+    "base": "3",
+    "value": "20120221122211000100210021102001201112121"
+  },
+  "8": {
+    "base": "6",
+    "value": "20220554335330240002224253"
+  },
+  "9": {
+    "base": "12",
+    "value": "45153788322a1255483"
+  },
+  "10": {
+    "base": "7",
+    "value": "1101613130313526312514143"
+  }
+}`;
 
-const testcase1Constant = processTestCase('testcase1.json'); const testcase2Constant = processTestCase('testcase2.json');
-
-console.log("Testcase 1 Constant Term:", testcase1Constant); console.log("Testcase 2 Constant Term:", testcase2Constant);
+// Run the calculation
+calculateSecret(inputJson);
