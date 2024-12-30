@@ -1,0 +1,88 @@
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class PolynomialRootFinder {
+
+    public static void main(String[] args) throws IOException {
+        String testcase1File = "testcase1.json";
+        String testcase2File = "testcase2.json";
+
+        long testcase1Constant = findConstantTerm(testcase1File);
+        long testcase2Constant = findConstantTerm(testcase2File);
+
+        System.out.println("Testcase 1 Constant Term: " + testcase1Constant);
+        System.out.println("Testcase 2 Constant Term: " + testcase2Constant);
+    }
+
+    private static long findConstantTerm(String filename) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String jsonContent = Files.readString(Paths.get(filename));
+        Map<String, Object> jsonData = objectMapper.readValue(jsonContent, new TypeReference<>() {});
+
+        Map<String, Integer> keys = objectMapper.convertValue(jsonData.get("keys"), new TypeReference<>() {});
+        int k = keys.get("k");
+
+        List<Root> roots = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : jsonData.entrySet()) {
+            if (!"keys".equals(entry.getKey())) {
+                int x = Integer.parseInt(entry.getKey());
+                Map<String, String> valueMap = objectMapper.convertValue(entry.getValue(), new TypeReference<>() {});
+                int base = Integer.parseInt(valueMap.get("base"));
+                String value = valueMap.get("value");
+                long y = decodeValue(base, value);
+                roots.add(new Root(x, y));
+            }
+        }
+
+        return calculateConstantTerm(roots);
+    }
+
+    private static long decodeValue(int base, String value) {
+        long decodedValue = 0;
+        for (int i = 0; i < value.length(); i++) {
+            decodedValue = decodedValue * base + Character.digit(value.charAt(i), base);
+        }
+        return decodedValue;
+    }
+
+    private static long calculateConstantTerm(List<Root> roots) {
+        int n = roots.size();
+        int[] xValues = new int[n];
+        long[] yValues = new long[n];
+
+        for (int i = 0; i < n; i++) {
+            xValues[i] = roots.get(i).x;
+            yValues[i] = roots.get(i).y;
+        }
+
+        double constantTerm = 0.0;
+        for (int i = 0; i < n; i++) {
+            double term = yValues[i];
+            for (int j = 0; j < n; j++) {
+                if (i != j) {
+                    term *= (double) (0 - xValues[j]) / (xValues[i] - xValues[j]);
+                }
+            }
+            constantTerm += term;
+        }
+
+        return Math.round(constantTerm);
+    }
+
+    private static class Root {
+        int x;
+        long y;
+
+        public Root(int x, long y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+}
